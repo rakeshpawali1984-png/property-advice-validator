@@ -47,9 +47,10 @@ export function calculateScore(answers: Answers, contextType: 'agent' | 'propert
     }
   })
 
-  const finalScore = categoryScores.reduce((total, cat) => {
-    return total + (cat.answered ? cat.score * cat.weight * 10 : 0)
-  }, 0)
+  const answeredWeightSum = categoryScores.reduce((total, cat) => total + (cat.answered ? cat.weight : 0), 0)
+  const rawWeightedSum = categoryScores.reduce((total, cat) => total + (cat.answered ? cat.score * cat.weight : 0), 0)
+  // Renormalize against answered weights — max is always 100 regardless of which categories are skipped
+  const finalScore = answeredWeightSum > 0 ? (rawWeightedSum / answeredWeightSum) * 10 : 0
 
   const weakAreas = categoryScores
     .filter((c) => c.answered && c.score < 6)
@@ -65,6 +66,7 @@ export function calculateScore(answers: Answers, contextType: 'agent' | 'propert
   // ─── Context-specific score capping ──────────────────────────────────────────
   // Rules are engine-specific — no cross-contamination.
   let cappedScore = finalScore
+  let capTriggered = false
 
   if (isProperty) {
     // Property engine: Risk Factors OR Evidence weak → cap at 65
@@ -72,15 +74,15 @@ export function calculateScore(answers: Answers, contextType: 'agent' | 'propert
     const propEvidCat = categoryScores.find((c) => c.id === 'prop_evidence')
     const propRiskWeak = !!(propRiskCat?.answered && propRiskCat.score < 6)
     const propEvidWeak = !!(propEvidCat?.answered && propEvidCat.score < 6)
-    if (propRiskWeak || propEvidWeak) cappedScore = Math.min(cappedScore, 65)
+    if (propRiskWeak || propEvidWeak) { cappedScore = Math.min(cappedScore, 65); capTriggered = true }
   } else {
     // Agent engine: separate cap per critical category (caps compound via min)
     const dataCat = categoryScores.find((c) => c.id === 'data_evidence')
     const riskDisCat = categoryScores.find((c) => c.id === 'asset_quality')  // Risk Discussion proxy
     const incCat = categoryScores.find((c) => c.id === 'incentives')
-    if (dataCat?.answered && dataCat.score < 6) cappedScore = Math.min(cappedScore, 65)
-    if (riskDisCat?.answered && riskDisCat.score < 6) cappedScore = Math.min(cappedScore, 60)
-    if (incCat?.answered && incCat.score < 6) cappedScore = Math.min(cappedScore, 60)
+    if (dataCat?.answered && dataCat.score < 6) { cappedScore = Math.min(cappedScore, 65); capTriggered = true }
+    if (riskDisCat?.answered && riskDisCat.score < 6) { cappedScore = Math.min(cappedScore, 60); capTriggered = true }
+    if (incCat?.answered && incCat.score < 6) { cappedScore = Math.min(cappedScore, 60); capTriggered = true }
   }
 
   // Tighter verdict thresholds aligned with capping
@@ -89,10 +91,10 @@ export function calculateScore(answers: Answers, contextType: 'agent' | 'propert
   else if (cappedScore >= 60) verdict = 'Moderate Alignment'
   else verdict = 'Low Confidence'
 
-  // Risk level derived from critical category combinations
+  // A triggered cap means a critical category is weak — always at least Moderate risk
   const riskLevel: ScorecardResult['riskLevel'] =
     bothCritical ? 'Elevated' :
-    weakAreas.length >= 2 ? 'Moderate' : 'Low'
+    (weakAreas.length >= 2 || capTriggered) ? 'Moderate' : 'Low'
 
   return { finalScore: Math.round(cappedScore), verdict, categoryScores, weakAreas, contextType, riskLevel }
 }

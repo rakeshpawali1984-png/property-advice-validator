@@ -8,62 +8,41 @@ import { OptionScore } from '@/lib/types'
 // from hard numbers in the conversation text, matching the property engine spec.
 function computeDeterministicPropertyPrefills(text: string): Record<string, OptionScore> {
   const out: Record<string, OptionScore> = {}
-  const cleaned = text.replace(/,/g, '')
 
-  // --- Yield computation ---------------------------------------------------
-  let priceNum: number | undefined
-  const pricePatterns: Array<[RegExp, (m: RegExpMatchArray) => number]> = [
-    [/\$\s*([\d]+(?:\.\d+)?)\s*(?:million|m)\b/i, (m) => parseFloat(m[1]) * 1_000_000],
-    [/\$\s*([\d]+)\s*k\b/i, (m) => parseFloat(m[1]) * 1_000],
-    [/(?:purchase\s+price|listed?\s+(?:at|for)|asking\s+(?:price|at|for)|priced?\s+at)\s*:?\s*\$?\s*([\d]{5,})/i, (m) => parseFloat(m[1])],
-    [/\$\s*([\d]{5,})\b/, (m) => parseFloat(m[1])],
-  ]
-  for (const [pat, convert] of pricePatterns) {
-    const m = cleaned.match(pat)
-    if (m) { const v = convert(m); if (v >= 50_000 && v <= 20_000_000) { priceNum = v; break } }
-  }
+  // pf_1 (yield quality) is NOT scored deterministically — yield magnitude ≠ data quality.
+  // "Is the stated yield supported by independent data?" cannot be answered from numbers alone.
 
-  let rentMid: number | undefined
-  const rentRange = cleaned.match(/\$\s*(\d{3,})\s*[-\u2013]\s*\$?\s*(\d{3,})\s*(?:per\s*week|pw|\/week|\/wk)?/i)
-  if (rentRange) {
-    const lo = parseFloat(rentRange[1])
-    const hi = parseFloat(rentRange[2])
-    if (lo >= 100 && hi >= lo && hi <= 5_000) rentMid = (lo + hi) / 2
-  }
-  if (!rentMid) {
-    const single = cleaned.match(/\$\s*(\d{3,})\s*(?:per\s*week|pw|\/week|\/wk)/i)
-    if (single) { const v = parseFloat(single[1]); if (v >= 100 && v <= 5_000) rentMid = v }
-  }
-
-  if (priceNum && rentMid) {
-    const yieldPct = (rentMid * 52 / priceNum) * 100
-    // ≥6% → 10 (Strong), 4–5.99% → 6 (Moderate), <4% → 2 (Poor)
-    const yieldScore: OptionScore = yieldPct >= 6 ? 10 : yieldPct >= 4 ? 6 : 2
-    out['pf_1'] = yieldScore  // "Is the stated rental yield supported..."
-  }
-
-  // --- Risk factor deductions (spec: start at 10, subtract per flag) --------
-  let riskDed = 0
-  if (/public\s*housing|housing\s*commission|commission\s*home/i.test(text)) riskDed += 2
-  if (/transmission\s*line|power\s*lines?|high[- ]?voltage|pylon/i.test(text)) riskDed += 2
-  if (/irregular\s*(?:block|shape|land)|battle[-\s]?axe/i.test(text)) riskDed += 1
-  if (/steep\s*slope|sloped?\s*(?:land|block)|sloping/i.test(text)) riskDed += 1
+  // --- Risk factor deductions — domain-split --------------------------------
   const yrMatch = text.match(/(?:built|constructed|circa)\s*(?:in\s+)?(\d{4})\b/i)
-  if (yrMatch && (new Date().getFullYear() - parseInt(yrMatch[1])) > 40) riskDed += 1
+  const buildAge = yrMatch ? new Date().getFullYear() - parseInt(yrMatch[1]) : 0
 
-  const riskRaw = Math.max(0, 10 - riskDed)
-  const riskScore: OptionScore = riskRaw >= 8 ? 10 : riskRaw >= 5 ? 6 : 2
-  out['pr_1'] = riskScore  // environmental risks question
-  out['pr_2'] = riskScore  // external risks question
+  // pr_1: environmental / physical risks (flood, fire, contamination, heritage, slope, age)
+  let envDed = 0
+  if (/flood\s*(?:overlay|zone|plain|risk)|floodprone/i.test(text)) envDed += 2
+  if (/bushfire|BAL[\s-]?rating|fire\s*(?:overlay|zone|risk)/i.test(text)) envDed += 2
+  if (/(?:contaminated|contamination|remediation)\s*(?:land|soil|site)?/i.test(text)) envDed += 2
+  if (/heritage\s*(?:overlay|listed?|register)/i.test(text)) envDed += 1
+  if (/steep\s*slope|sloped?\s*(?:land|block)|sloping/i.test(text)) envDed += 1
+  if (buildAge > 40) envDed += 1
+  const envRaw = Math.max(0, 10 - envDed)
+  out['pr_1'] = (envRaw >= 8 ? 10 : envRaw >= 5 ? 6 : 2) as OptionScore
 
-  // --- Asset quality deductions (spec: start at 10, subtract per flag) -----
+  // pr_2: external / infrastructure risks (power lines, housing, strata, block shape)
+  let extDed = 0
+  if (/public\s*housing|housing\s*commission|commission\s*home/i.test(text)) extDed += 2
+  if (/transmission\s*line|power\s*lines?|high[- ]?voltage|pylon/i.test(text)) extDed += 2
+  if (/strata\s*(?:title|levy|fees?)?|body\s*corporate|owners?\s*corp(?:oration)?/i.test(text)) extDed += 1
+  if (/irregular\s*(?:block|shape|land)|battle[-\s]?axe/i.test(text)) extDed += 1
+  const extRaw = Math.max(0, 10 - extDed)
+  out['pr_2'] = (extRaw >= 8 ? 10 : extRaw >= 5 ? 6 : 2) as OptionScore
+
+  // --- Asset quality deductions (land characteristics only) -----------------
   let assetDed = 0
   if (/irregular\s*(?:block|shape|land)|battle[-\s]?axe/i.test(text)) assetDed += 1
-  if (yrMatch && (new Date().getFullYear() - parseInt(yrMatch[1])) > 40) assetDed += 1
+  if (buildAge > 40) assetDed += 1
   // "poor layout" is subjective — leave pa_1 to LLM; only pre-fill land characteristics
   const assetRaw = Math.max(0, 10 - assetDed)
-  const assetScore: OptionScore = assetRaw >= 8 ? 10 : assetRaw >= 5 ? 6 : 2
-  out['pa_2'] = assetScore  // land characteristics question
+  out['pa_2'] = (assetRaw >= 8 ? 10 : assetRaw >= 5 ? 6 : 2) as OptionScore
 
   return out
 }

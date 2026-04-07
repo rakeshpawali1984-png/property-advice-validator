@@ -183,19 +183,26 @@ export async function POST(req: NextRequest) {
           ? 'strengths: maximum 2. List only what the agent explicitly demonstrated (e.g. clear strategy alignment, responsive communication). Do NOT invent. No yield, no asset quality content.'
           : 'strengths: maximum 3. Derive from categories that scored above 7/10. Focus: strategy alignment, data quality, disclosure completeness, professional conduct. No property-specific content (no yield, no physical asset attributes).')
 
+    // H10: Promo signals detected in text are concrete risks — make GPT include them explicitly
+    const promoRisksNote = promoSignals.length > 0 && contextType !== 'property'
+      ? ` Language signals detected in the conversation are concrete risks — include each one verbatim: ${promoSignals.map((s) => `"${s}"`).join('; ')}.`
+      : ''
+
     const risksRule = contextType === 'property'
       ? (hasPropertyData
           ? 'risks: up to 4. Property-specific risks ONLY: list yield shortfall, detected environmental or external flags, age/construction concerns, location weaknesses — in that order by severity. Do NOT include agent credibility gaps.'
-          : 'risks: up to 4. Focus on evidence gaps — missing price benchmarking, unverified yield claims, undisclosed risk factors, missing location substantiation.')
+          : (weakAreas.length === 0 && finalScore >= 80
+              ? 'risks: No property data was extracted and scores are high. Return an EMPTY array []. Do NOT invent evidence gaps or assume missing data.'
+              : 'risks: up to 4. Focus on evidence gaps — missing price benchmarking, unverified yield claims, undisclosed risk factors, missing location substantiation.'))
       : (weakAreas.length === 0 && finalScore >= 80
           ? 'risks: The category scores show no weak areas and the overall score is high. Return an EMPTY array []. Do NOT invent or assume risks that are not evidenced by the scores.'
-          : 'risks: up to 4. Agent-credibility risks ONLY: advice gaps, missing data, undisclosed incentives, risk discussion absences, pressure tactics detected. Do NOT calculate or estimate yield. Do NOT mention physical asset risks.')
+          : `risks: up to 4. Agent-credibility risks ONLY: advice gaps, missing data, undisclosed incentives, risk discussion absences, pressure tactics detected.${promoRisksNote} Do NOT calculate or estimate yield. Do NOT mention physical asset risks.`)
 
     const nextStepsRule = contextType === 'property'
       ? (hasPropertyData
-          ? 'nextSteps: exactly 3. Each step must tie to a specific detected property risk or data gap — not generic. Example: "Commission a building and pest inspection given the 1978 construction date", "Verify flood overlay with council before exchange", "Obtain independent vacancy rate data from a third-party source".'
-          : 'nextSteps: exactly 3. Focus on verifying property data: independent rental comparables, price benchmarking, environmental overlay check.')
-      : 'nextSteps: exactly 3. Each step must verify the agent\'s advice quality: "Request written disclosure of all referral arrangements", "Obtain comparable sales data for the recommended suburb from an independent source", "Ask for documented risk scenarios including vacancy and rate sensitivity".'
+          ? 'nextSteps: exactly 3. Each step must tie directly to a specific detected property risk or data gap identified above — not generic. Do NOT copy example text. Derive from the actual flags and weak areas in this conversation.'
+          : 'nextSteps: exactly 3. Each step must address a specific evidence gap from this conversation — identify what data is missing and name the action to get it. Do NOT use generic steps.')
+      : `nextSteps: exactly 3. Each step must address a specific weak area or risk identified in the scores above — not generic advice that could apply to any conversation. Derive from the lowest-scoring categories and any detected signals. Do NOT repeat the same step across different conversations.`
 
     const execSummaryInstruction = contextType === 'property'
       ? '2–3 direct sentences: (1) deal quality verdict with yield if computed, (2) most significant property risk by name, (3) key missing evidence element.'
@@ -214,36 +221,36 @@ ${contextType === 'property'
   ? 'DO NOT include agent credibility signals, professionalism ratings, or agent track record observations. Focus entirely on deal quality: yield, asset condition, risk flags, location evidence, data quality.'
   : 'DO NOT calculate or estimate yield. DO NOT include physical asset quality observations. DO NOT mention property-specific risks (flood, power lines, asbestos). Focus entirely on advice credibility: data evidence, risk discussion depth, incentive disclosure, strategy alignment.'}
 
-Respond ONLY with valid JSON:
+EXECUTIVE SUMMARY INSTRUCTION: ${execSummaryInstruction}
+Example: ${contextType === 'property'
+    ? '"The computed rental yield of ~5.3% sits below the 6% benchmark for this asset class. Transmission line presence introduces a measurable resale discount risk not acknowledged in the recommendation. No independent price benchmarking was provided."'
+    : '"The recommendation demonstrates strategic alignment but Data & Evidence was not substantiated with verifiable sources. The Incentives category remains undisclosed, introducing bias risk. Risk scenarios (vacancy, rate movement, price correction) were not discussed."'}
+
+Respond ONLY with valid JSON — no markdown, no code fences, no text outside the JSON:
 {
-  "executiveSummary": "${execSummaryInstruction}",
-  "summary": "One direct sentence covering core verdict and primary gap.",
+  "executiveSummary": "<write your executive summary here — follow the EXECUTIVE SUMMARY INSTRUCTION above>",
+  "summary": "<one sentence covering core verdict and primary gap>",
   "strengths": ["context-specific strengths only — see rules below"],
   "risks": ["context-specific risks only — see rules below"],
   "nextSteps": ["exactly 3 steps — see rules below"],
-  "categoryNotes": {
-    "Category Name": "One direct diagnostic sentence per category scoring below 7/10"
-  }
+  "categoryNotes": {}
 }
 
 Language rules:
 - NEVER use: may, might, could, seems, appears, perhaps, potentially, suggest
 - NEVER use: excellent, great, perfectly, outstanding, impressive
-- ${contextType === 'property'
-    ? 'executiveSummary example: "The computed rental yield of ~5.3% sits below the 6% benchmark for this asset class. Transmission line presence introduces a measurable resale discount risk not acknowledged in the recommendation. No independent price benchmarking was provided."'
-    : 'executiveSummary example: "The recommendation demonstrates strategic alignment but Data & Evidence was not substantiated with verifiable sources. The Incentives category remains undisclosed, introducing bias risk. Risk scenarios (vacancy, rate movement, price correction) were not discussed."'}
 - summary: one sentence, direct, specific
 - ${strengthsRule}
 - ${risksRule}
 - ${nextStepsRule}
-- categoryNotes: one direct diagnostic sentence per weak category (score < 7/10). Direct, not soft.
+- categoryNotes: include ONLY the categories named in "Weak areas" above. If "Weak areas" is "None identified", return {}. One direct diagnostic sentence per weak category (scoring below 6/10). Do NOT annotate categories not in the weak areas list.
 
 Tone: analytical, audit-style, direct, calm but critical.`
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3,
+      temperature: 0.1,
       max_tokens: 900,
     })
 
@@ -258,8 +265,12 @@ Tone: analytical, audit-style, direct, calm but critical.`
     if (!insights.executiveSummary) insights.executiveSummary = ''
     if (!insights.categoryNotes) insights.categoryNotes = {}
     insights.strengths = (insights.strengths ?? []).slice(0, finalScore < 60 ? 2 : 3)
-    // Strip hallucinated risks: if no weak areas and high score, risks must be empty
-    if (weakAreas.length === 0 && finalScore >= 80 && contextType !== 'property') {
+    // Strip hallucinated risks: suppress when no weak areas, high score, and no grounded property data
+    const suppressRisks =
+      weakAreas.length === 0 &&
+      finalScore >= 80 &&
+      (contextType !== 'property' || !hasPropertyData)
+    if (suppressRisks) {
       insights.risks = []
     } else {
       insights.risks = (insights.risks ?? []).slice(0, 4)
