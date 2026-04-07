@@ -187,7 +187,9 @@ export async function POST(req: NextRequest) {
       ? (hasPropertyData
           ? 'risks: up to 4. Property-specific risks ONLY: list yield shortfall, detected environmental or external flags, age/construction concerns, location weaknesses — in that order by severity. Do NOT include agent credibility gaps.'
           : 'risks: up to 4. Focus on evidence gaps — missing price benchmarking, unverified yield claims, undisclosed risk factors, missing location substantiation.')
-      : 'risks: up to 4. Agent-credibility risks ONLY: advice gaps, missing data, undisclosed incentives, risk discussion absences, pressure tactics detected. Do NOT calculate or estimate yield. Do NOT mention physical asset risks.'
+      : (weakAreas.length === 0 && finalScore >= 80
+          ? 'risks: The category scores show no weak areas and the overall score is high. Return an EMPTY array []. Do NOT invent or assume risks that are not evidenced by the scores.'
+          : 'risks: up to 4. Agent-credibility risks ONLY: advice gaps, missing data, undisclosed incentives, risk discussion absences, pressure tactics detected. Do NOT calculate or estimate yield. Do NOT mention physical asset risks.')
 
     const nextStepsRule = contextType === 'property'
       ? (hasPropertyData
@@ -256,7 +258,12 @@ Tone: analytical, audit-style, direct, calm but critical.`
     if (!insights.executiveSummary) insights.executiveSummary = ''
     if (!insights.categoryNotes) insights.categoryNotes = {}
     insights.strengths = (insights.strengths ?? []).slice(0, finalScore < 60 ? 2 : 3)
-    insights.risks = (insights.risks ?? []).slice(0, 4)
+    // Strip hallucinated risks: if no weak areas and high score, risks must be empty
+    if (weakAreas.length === 0 && finalScore >= 80 && contextType !== 'property') {
+      insights.risks = []
+    } else {
+      insights.risks = (insights.risks ?? []).slice(0, 4)
+    }
     insights.nextSteps = (insights.nextSteps ?? []).slice(0, 3)
 
     // Property data from server extraction — never trust LLM for structured numbers
