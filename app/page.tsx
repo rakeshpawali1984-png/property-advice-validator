@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import Questionnaire from '@/components/Questionnaire'
 import Results from '@/components/Results'
 import ConversationAnalyzer from '@/components/ConversationAnalyzer'
@@ -62,8 +62,13 @@ export default function Home() {
     const scored = calculateScore(answers, contextType)
     setResult(scored)
     setView('results')
-    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
+
+  useEffect(() => {
+    if (view === 'results') {
+      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
+    }
+  }, [view])
 
   function handleReset() {
     setAnswers(buildInitialAnswers(contextType))
@@ -72,7 +77,6 @@ export default function Home() {
     setView('questionnaire')
     setShowAnalyzer(false)
     setConversationText('')
-    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   return (
