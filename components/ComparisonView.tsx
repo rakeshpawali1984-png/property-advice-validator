@@ -248,7 +248,8 @@ export default function ComparisonView({ saved, onRemove, onRename, onBack, onCl
       )}
 
       {/* Property header cards */}
-      <div className={`grid gap-3 ${n === 3 ? 'grid-cols-3' : n === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+      <div className="overflow-x-auto">
+        <div className={`grid gap-3 ${n === 3 ? 'grid-cols-3 min-w-[480px]' : n === 2 ? 'grid-cols-2' : 'grid-cols-1 sm:grid-cols-2'}`}>
         {saved.map((p, idx) => {
           const isWinner = scoreBest === idx
           const flagCount = p.propertyData?.flags?.length ?? 0
@@ -316,12 +317,13 @@ export default function ComparisonView({ saved, onRemove, onRename, onBack, onCl
             </button>
           </div>
         )}
+        </div>
       </div>
 
       {/* Comparison table */}
-      <div className="rounded-2xl border border-gray-200 shadow-sm overflow-clip bg-white">
+      <div className="rounded-2xl border border-gray-200 shadow-sm bg-white overflow-hidden">
         <div className="overflow-x-auto overflow-y-auto max-h-[70vh]">
-          <table className="w-full min-w-[400px] border-collapse">
+          <table className="w-full min-w-[360px] border-collapse">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
                 <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-left min-w-[120px]" />
@@ -496,7 +498,7 @@ export default function ComparisonView({ saved, onRemove, onRename, onBack, onCl
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-5 justify-center text-xs text-gray-400">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 justify-center text-xs text-gray-400">
         <span className="flex items-center gap-1.5">
           <span className="inline-block w-3 h-3 rounded bg-green-50 border border-green-200" />
           Best in comparison

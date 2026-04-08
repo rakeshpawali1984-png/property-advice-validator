@@ -123,20 +123,20 @@ export default function Home() {
     <div className="min-h-screen bg-[#F8FAFC]">
       {/* Header */}
       <header className="border-b border-gray-200 bg-white/90 backdrop-blur-sm sticky top-0 z-10 shadow-sm">
-        <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shadow-sm">
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-600 flex items-center justify-center shadow-sm shrink-0">
+              <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
               </svg>
             </div>
-            <div>
-              <h1 className="text-sm font-semibold text-gray-900 tracking-tight">Property Advice Analysis</h1>
-              <p className="text-xs text-gray-400">Structured advice audit framework</p>
+            <div className="min-w-0">
+              <h1 className="text-sm font-semibold text-gray-900 tracking-tight truncate">Property Advice Analysis</h1>
+              <p className="text-xs text-gray-400 hidden sm:block">Structured advice audit framework</p>
             </div>
           </div>
           {view === 'questionnaire' && (
-            <span className="text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full tabular-nums">
+            <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full tabular-nums whitespace-nowrap shrink-0">
               {answeredCount}/{totalQuestions} completed
             </span>
           )}
@@ -144,7 +144,7 @@ export default function Home() {
       </header>
 
       {/* Extra bottom padding when ComparisonBar is visible */}
-      <main className={`max-w-3xl mx-auto px-6 py-10 ${saved.length > 0 && view !== 'comparison' ? 'pb-24' : ''}`}>
+      <main className={`max-w-3xl mx-auto px-4 sm:px-6 py-10 ${saved.length > 0 && view !== 'comparison' ? 'pb-24' : ''}`}>
         {view === 'comparison' ? (
           <ComparisonView
             saved={saved}
@@ -307,7 +307,7 @@ export default function Home() {
         )}
       </main>
 
-      <footer className={`max-w-3xl mx-auto px-6 py-6 flex items-center justify-center border-t border-gray-100 mt-4 ${saved.length > 0 && view !== 'comparison' ? 'mb-16' : ''}`}>
+      <footer className={`max-w-3xl mx-auto px-4 sm:px-6 py-6 flex items-center justify-center border-t border-gray-100 mt-4 ${saved.length > 0 && view !== 'comparison' ? 'mb-16' : ''}`}>
         <a href="/privacy" className="text-xs text-gray-400 hover:text-gray-600 transition-colors duration-150 underline underline-offset-2">
           Privacy Policy
         </a>

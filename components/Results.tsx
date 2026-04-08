@@ -98,12 +98,12 @@ export default function Results({ result, conversationText, onReset, onResetToCo
       </div>
 
       {/* Score hero */}
-      <div className={`rounded-2xl border-2 ${config.border} ${config.gradient} p-8 text-center shadow-md`}>
+      <div className={`rounded-2xl border-2 ${config.border} ${config.gradient} p-5 sm:p-8 text-center shadow-md`}>
         <div className="mb-2">
-          <span className={`text-8xl font-extrabold ${config.scoreColor} tabular-nums tracking-tight`}>
+          <span className={`text-5xl sm:text-8xl font-extrabold ${config.scoreColor} tabular-nums tracking-tight`}>
             {result.finalScore}
           </span>
-          <span className="text-gray-400 text-2xl font-light ml-1">/100</span>
+          <span className="text-gray-400 text-lg sm:text-2xl font-light ml-1">/100</span>
         </div>
         <div className="flex items-center justify-center gap-2 mb-2 flex-wrap">
           <div className={`inline-flex items-center px-4 py-1.5 rounded-full text-sm font-semibold bg-white/80 ${config.color} border ${config.border}`}>
