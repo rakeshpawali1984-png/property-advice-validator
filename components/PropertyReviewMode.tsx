@@ -165,7 +165,7 @@ export default function PropertyReviewMode({ categories, answers, onChange, pref
                   const selectedOption = q.options.find((o) => o.score === score)
                   // First clause (before comma or dash) as short label
                   const shortLabel = selectedOption
-                    ? selectedOption.label.split(/[,–—]/)[0].trim().slice(0, 45)
+                    ? selectedOption.label.split(/[,–—]/)[0].trim().slice(0, 25)
                     : 'Not set'
 
                   return (
