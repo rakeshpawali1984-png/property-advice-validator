@@ -120,10 +120,13 @@ export default function Results({ result, conversationText, onReset, onSaveToCom
           </div>
         </div>
         <p className={`text-xs font-medium ${confidenceColor} mb-4`}>
-          Confidence: {confidence} &mdash; {buildConfidenceReason()}
+          {confidence === 'High' ? 'High confidence' : confidence === 'Medium' ? 'Moderate confidence' : 'Limited data available'} &mdash; {buildConfidenceReason()}
         </p>
         {insights?.summary ? (
-          <p className="text-gray-700 text-sm max-w-md mx-auto leading-relaxed font-medium">{insights.summary}</p>
+          <div className="max-w-md mx-auto">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Quick take</p>
+            <p className="text-gray-700 text-sm leading-relaxed font-medium">{insights.summary}</p>
+          </div>
         ) : loadingInsights ? (
           <p className="text-gray-400 text-sm">Preparing analysis…</p>
         ) : (
@@ -216,7 +219,7 @@ export default function Results({ result, conversationText, onReset, onSaveToCom
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
                     </div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-blue-700">Executive Summary</p>
+                    <p className="text-xs font-bold uppercase tracking-widest text-blue-700">What this means</p>
                   </div>
                   <p className="text-sm text-gray-700 leading-7">{insights.executiveSummary}</p>
                 </div>
@@ -224,7 +227,7 @@ export default function Results({ result, conversationText, onReset, onSaveToCom
 
               {/* Key Risks */}
               <AnalysisCard
-                title="Key Risks"
+                title="What could go wrong"
                 icon="⚠"
                 items={insights.risks}
                 dotColor="bg-red-400"
@@ -242,7 +245,7 @@ export default function Results({ result, conversationText, onReset, onSaveToCom
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
                     </div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-green-700">What Works</p>
+                    <p className="text-xs font-bold uppercase tracking-widest text-green-700">What works</p>
                     <span className="text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full ml-auto">for balance</span>
                   </div>
                   <ul className="space-y-2.5">
@@ -264,9 +267,9 @@ export default function Results({ result, conversationText, onReset, onSaveToCom
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
-                  <p className="text-xs font-bold uppercase tracking-widest text-blue-700">What to Verify</p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-blue-700">What to check next</p>
                 </div>
-                <p className="text-xs text-blue-500 mb-4">Before proceeding, confirm the following:</p>
+                <p className="text-xs text-blue-500 mb-4">Before you move forward, check these:</p>
                 <ul className="space-y-3">
                   {insights.nextSteps.map((step, i) => (
                     <li
@@ -297,7 +300,7 @@ export default function Results({ result, conversationText, onReset, onSaveToCom
               {/* Category Breakdown */}
               <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
                 <div className="px-6 py-4 bg-gray-50 border-b border-gray-100">
-                  <h3 className="text-sm font-semibold text-gray-800">Category Breakdown</h3>
+                  <h3 className="text-sm font-semibold text-gray-800">Detailed breakdown</h3>
                 </div>
                 <div className="p-6 space-y-5">
                   {result.categoryScores.map((cat) => {
@@ -388,9 +391,18 @@ export default function Results({ result, conversationText, onReset, onSaveToCom
           className="w-full py-3.5 rounded-xl bg-gray-900 hover:bg-gray-800 active:bg-gray-950 text-sm font-semibold text-white transition-all duration-200 shadow-md flex items-center justify-center gap-2"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
           </svg>
-          Analyse Another Property or Agent
+          Check another property
+        </button>
+        <button
+          onClick={onReset}
+          className="w-full py-3 rounded-xl bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 text-sm font-semibold text-gray-600 transition-all duration-200 flex items-center justify-center gap-2"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+          Check agent advice
         </button>
       </div>
 
@@ -409,7 +421,7 @@ function capitalise(s: string): string {
 
 function KeyMetricsCard({ data, whatWorks }: { data: NonNullable<AIInsights['propertyData']>; whatWorks?: string[] }) {
   const metrics: { label: string; value: string | undefined; highlight?: boolean }[] = [
-    { label: 'Est. rental yield', value: data.estimatedYield, highlight: true },
+    { label: 'Rental yield', value: data.estimatedYield, highlight: true },
     { label: 'Purchase price', value: data.price },
     { label: 'Rental estimate', value: data.rentRange },
     { label: 'Land size', value: data.landSize },
@@ -427,7 +439,7 @@ function KeyMetricsCard({ data, whatWorks }: { data: NonNullable<AIInsights['pro
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
         </div>
-        <p className="text-xs font-bold uppercase tracking-widest text-indigo-700">Key Metrics</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-indigo-700">Quick numbers</p>
       </div>
       {metrics.length > 0 && (
         <div className="grid grid-cols-2 gap-2.5 mb-4">
@@ -468,7 +480,7 @@ function KeyMetricsCard({ data, whatWorks }: { data: NonNullable<AIInsights['pro
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-green-700">What Works</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-green-700">What works</p>
             <span className="text-[9px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full ml-auto">for balance</span>
           </div>
           <ul className="space-y-1.5">
@@ -551,7 +563,7 @@ function AgentMetricsCard({ categoryScores, whatWorks }: { categoryScores: Categ
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-green-700">What Works</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-green-700">What works</p>
             <span className="text-[9px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full ml-auto">for balance</span>
           </div>
           <ul className="space-y-1.5">
