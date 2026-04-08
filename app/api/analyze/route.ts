@@ -175,13 +175,13 @@ export async function POST(req: NextRequest) {
     // Agent engine: advice credibility audit — NO yield, NO asset quality content.
     // Property engine: deal quality audit — NO agent credibility content.
 
-    const strengthsRule = contextType === 'property'
+    const whatWorksRule = contextType === 'property'
       ? (finalScore < 60
-          ? 'strengths: maximum 2. Derive ONLY from confirmed property attributes (computed yield, land size, absence of overlays, favourable location). Do NOT mention agent credibility, professionalism, or track record.'
-          : 'strengths: maximum 3. Include computed yield if ≥6%, clean risk profile if no flags detected, strong location evidence if supported. No agent-related content.')
+          ? 'whatWorks: maximum 2 items. Only include genuine, data-backed positives: computed yield ≥5%, land size above suburb median, absence of all risk overlays, or documented strong rental demand. If a positive has a trade-off, frame it — e.g. "Strong rental yield (~6.2%), though this may reflect underlying location risk". Do NOT include: "good property", "nice layout", "great opportunity", or any generic phrase. Do NOT mention agent credibility.'
+          : 'whatWorks: maximum 3 items. Include meaningful positives only — computed yield, land size, clean risk profile, or strong location evidence. Where applicable, pair with a trade-off caveat. No generic language. No agent-related content.')
       : (finalScore < 60
-          ? 'strengths: maximum 2. List only what the agent explicitly demonstrated (e.g. clear strategy alignment, responsive communication). Do NOT invent. No yield, no asset quality content.'
-          : 'strengths: maximum 3. Derive from categories that scored above 7/10. Focus: strategy alignment, data quality, disclosure completeness, professional conduct. No property-specific content (no yield, no physical asset attributes).')
+          ? 'whatWorks: maximum 2 items. Only what the agent explicitly demonstrated with evidence (e.g. clear strategy alignment, disclosed fee structure). Do NOT invent. No yield. No asset quality.'
+          : 'whatWorks: maximum 3 items. Derive from categories above 7/10. Focus: strategy alignment, data quality, disclosure completeness. Where a strength has a caveat, include it. No property attributes.')
 
     // H10: Promo signals detected in text are concrete risks — make GPT include them explicitly
     const promoRisksNote = promoSignals.length > 0 && contextType !== 'property'
@@ -230,7 +230,8 @@ Respond ONLY with valid JSON — no markdown, no code fences, no text outside th
 {
   "executiveSummary": "<write your executive summary here — follow the EXECUTIVE SUMMARY INSTRUCTION above>",
   "summary": "<one sentence covering core verdict and primary gap>",
-  "strengths": ["context-specific strengths only — see rules below"],
+  "whatWorks": ["2–3 genuine positives only — see whatWorks rules below"],
+  "strengths": [],
   "risks": ["context-specific risks only — see rules below"],
   "nextSteps": ["exactly 3 steps — see rules below"],
   "categoryNotes": {}
@@ -239,8 +240,9 @@ Respond ONLY with valid JSON — no markdown, no code fences, no text outside th
 Language rules:
 - NEVER use: may, might, could, seems, appears, perhaps, potentially, suggest
 - NEVER use: excellent, great, perfectly, outstanding, impressive
+- NEVER use in whatWorks: "good property", "nice layout", "great opportunity", "solid investment", or any similar generic phrase
 - summary: one sentence, direct, specific
-- ${strengthsRule}
+- ${whatWorksRule}
 - ${risksRule}
 - ${nextStepsRule}
 - categoryNotes: include ONLY the categories named in "Weak areas" above. If "Weak areas" is "None identified", return {}. One direct diagnostic sentence per weak category (scoring below 6/10). Do NOT annotate categories not in the weak areas list.
@@ -264,7 +266,8 @@ Tone: analytical, audit-style, direct, calm but critical.`
     if (!insights.summary) insights.summary = ''
     if (!insights.executiveSummary) insights.executiveSummary = ''
     if (!insights.categoryNotes) insights.categoryNotes = {}
-    insights.strengths = (insights.strengths ?? []).slice(0, finalScore < 60 ? 2 : 3)
+    insights.strengths = []
+    insights.whatWorks = (insights.whatWorks ?? []).slice(0, finalScore < 60 ? 2 : 3)
     // Strip hallucinated risks: suppress when no weak areas, high score, and no grounded property data
     const suppressRisks =
       weakAreas.length === 0 &&

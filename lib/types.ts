@@ -40,18 +40,27 @@ export interface ScorecardResult {
 }
 
 export interface PropertyData {
+  address?: string
   price?: string
   rentRange?: string
   estimatedYield?: string
   landSize?: string
   yearBuilt?: string
+  bedrooms?: string
+  bathrooms?: string
+  parking?: string
   flags?: string[]
+}
+
+export interface PropertyExtractResult extends ConversationSignals {
+  propertyData?: PropertyData
 }
 
 export interface AIInsights {
   summary: string
   executiveSummary?: string
   strengths: string[]
+  whatWorks?: string[]
   risks: string[]
   detectedSignals?: string[]  // retained for backward compat
   whyItMatters?: string       // retained for backward compat
