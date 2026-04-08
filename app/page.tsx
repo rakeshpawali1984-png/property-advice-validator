@@ -100,6 +100,15 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
   }
 
+  function handleResetToContext(ctx: 'property' | 'agent') {
+    handleContextChange(ctx)
+    setResult(null)
+    setView('questionnaire')
+    setCurrentResultSaved(false)
+    setExtractedPropertyData(null)
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
+  }
+
   function handleSaveToCompare(insightsPropertyData: PropertyData | null) {
     if (!result || isFull) return
     // Prefer data from the extract step (has address); fall back to analyze API data
@@ -288,6 +297,7 @@ export default function Home() {
                 result={result}
                 conversationText={conversationText}
                 onReset={handleReset}
+                onResetToContext={handleResetToContext}
                 onSaveToCompare={result.contextType === 'property' ? handleSaveToCompare : undefined}
                 isSaved={currentResultSaved}
                 isFull={isFull}

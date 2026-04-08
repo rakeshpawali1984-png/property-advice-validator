@@ -8,12 +8,13 @@ interface Props {
   result: ScorecardResult
   conversationText?: string
   onReset: () => void
+  onResetToContext?: (ctx: 'property' | 'agent') => void
   onSaveToCompare?: (propertyData: PropertyData | null) => void
   isSaved?: boolean
   isFull?: boolean
 }
 
-export default function Results({ result, conversationText, onReset, onSaveToCompare, isSaved, isFull }: Props) {
+export default function Results({ result, conversationText, onReset, onResetToContext, onSaveToCompare, isSaved, isFull }: Props) {
   const [insights, setInsights] = useState<AIInsights | null>(null)
   const [loadingInsights, setLoadingInsights] = useState(false)
   const [insightError, setInsightError] = useState('')
@@ -387,7 +388,7 @@ export default function Results({ result, conversationText, onReset, onSaveToCom
           )
         )}
         <button
-          onClick={onReset}
+          onClick={() => onResetToContext ? onResetToContext('property') : onReset()}
           className="w-full py-3.5 rounded-xl bg-gray-900 hover:bg-gray-800 active:bg-gray-950 text-sm font-semibold text-white transition-all duration-200 shadow-md flex items-center justify-center gap-2"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
@@ -396,7 +397,7 @@ export default function Results({ result, conversationText, onReset, onSaveToCom
           Check another property
         </button>
         <button
-          onClick={onReset}
+          onClick={() => onResetToContext ? onResetToContext('agent') : onReset()}
           className="w-full py-3 rounded-xl bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 text-sm font-semibold text-gray-600 transition-all duration-200 flex items-center justify-center gap-2"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
