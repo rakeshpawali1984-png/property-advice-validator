@@ -3,6 +3,36 @@ import OpenAI from 'openai'
 import { ALL_PROPERTY_QUESTION_IDS, PROPERTY_CATEGORIES } from '@/lib/questions'
 import { OptionScore, PropertyData } from '@/lib/types'
 
+// ─── URL scraper (best-effort) ────────────────────────────────────────────────
+async function tryFetchUrl(url: string): Promise<{ text: string; ok: boolean }> {
+  try {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 6000)
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-AU,en;q=0.9',
+      },
+      signal: controller.signal,
+    })
+    clearTimeout(timer)
+    if (!res.ok) return { text: '', ok: false }
+    const html = await res.text()
+    const stripped = html
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&[a-z#0-9]+;/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 5000)
+    return { text: stripped, ok: stripped.length > 100 }
+  } catch {
+    return { text: '', ok: false }
+  }
+}
+
 // ─── Deterministic property scoring (mirrors conversation/route.ts) ───────────
 function computeDeterministicPropertyPrefills(text: string): Record<string, OptionScore> {
   const out: Record<string, OptionScore> = {}
@@ -56,9 +86,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Please enter a property address or URL.' }, { status: 400 })
     }
 
+    // Try to scrape URL first
+    let scrapedText = ''
+    let scrapedOk = false
+    if (/^https?:\/\//i.test(addressOrUrl.trim())) {
+      const result = await tryFetchUrl(addressOrUrl.trim())
+      scrapedText = result.text
+      scrapedOk = result.ok
+    }
+
     const combinedText = [
       `Property address or URL: ${addressOrUrl.trim()}`,
-      listingText?.trim() ? `\n\nListing details:\n${listingText.slice(0, 3000)}` : '',
+      scrapedText ? `\n\nFetched page content:\n${scrapedText}` : '',
+      listingText?.trim() ? `\n\nListing details (user-provided):\n${listingText.slice(0, 3000)}` : '',
     ].join('')
 
     const questionList = PROPERTY_CATEGORIES.flatMap((cat) =>
@@ -157,6 +197,7 @@ Use scores 10, 6, or 2 only. If very little data is available, still return your
       summary: typeof parsed.summary === 'string' ? parsed.summary.slice(0, 500) : '',
       rawText: combinedText,
       propertyData,
+      scrapedOk,
     })
   } catch (err) {
     console.error('Property extract error:', err)
