@@ -6,11 +6,14 @@ import PropertyReviewMode from '@/components/PropertyReviewMode'
 import Results from '@/components/Results'
 import ConversationAnalyzer from '@/components/ConversationAnalyzer'
 import PropertyLinkInput from '@/components/PropertyLinkInput'
+import ComparisonBar from '@/components/ComparisonBar'
+import ComparisonView from '@/components/ComparisonView'
 import { CATEGORIES, PROPERTY_CATEGORIES } from '@/lib/questions'
 import { calculateScore } from '@/lib/scoring'
-import { Answers, OptionScore, ScorecardResult, ConversationSignals } from '@/lib/types'
+import { Answers, OptionScore, ScorecardResult, ConversationSignals, PropertyData } from '@/lib/types'
+import { useSavedProperties } from '@/lib/useSavedProperties'
 
-type View = 'questionnaire' | 'results'
+type View = 'questionnaire' | 'results' | 'comparison'
 type ContextType = 'agent' | 'property'
 
 // Property defaults to score 6 (partial/moderate) so all 13 are pre-filled from the start.
@@ -32,7 +35,10 @@ export default function Home() {
   const [showAnalyzer, setShowAnalyzer] = useState(false)
   const [conversationText, setConversationText] = useState('')
   const [hasPrefilled, setHasPrefilled] = useState(false)
-  const [propertyInputMethod, setPropertyInputMethod] = useState<'conversation' | 'link' | null>(null)
+  const [currentResultSaved, setCurrentResultSaved] = useState(false)
+  const [extractedPropertyData, setExtractedPropertyData] = useState<PropertyData | null>(null)
+
+  const { saved, add: addToComparison, remove: removeFromComparison, rename: renameInComparison, clear: clearComparison, isFull } = useSavedProperties()
 
   const activeCategories = contextType === 'property' ? PROPERTY_CATEGORIES : CATEGORIES
 
@@ -41,10 +47,8 @@ export default function Home() {
     setAnswers(buildInitialAnswers(ctx))
     setPrefills({})
     setConversationText('')
-    // Auto-show analyzer in property mode (it's the primary input); hide by default in agent mode
     setShowAnalyzer(ctx === 'property')
     setHasPrefilled(false)
-    setPropertyInputMethod(null)
   }
 
   const handleChange = useCallback((questionId: string, score: OptionScore) => {
@@ -54,6 +58,7 @@ export default function Home() {
   const handlePrefill = useCallback((signals: ConversationSignals) => {
     setPrefills(signals.prefills)
     if (signals.rawText) setConversationText(signals.rawText)
+    if (signals.propertyData) setExtractedPropertyData(signals.propertyData)
     setAnswers((prev) => {
       const next = { ...prev }
       for (const [id, score] of Object.entries(signals.prefills)) {
@@ -72,6 +77,7 @@ export default function Home() {
   function handleSubmit() {
     const scored = calculateScore(answers, contextType)
     setResult(scored)
+    setCurrentResultSaved(false)
     setView('results')
   }
 
@@ -89,7 +95,19 @@ export default function Home() {
     setShowAnalyzer(false)
     setConversationText('')
     setHasPrefilled(false)
-    setPropertyInputMethod(null)
+    setCurrentResultSaved(false)
+    setExtractedPropertyData(null)
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
+  }
+
+  function handleSaveToCompare(insightsPropertyData: PropertyData | null) {
+    if (!result || isFull) return
+    // Prefer data from the extract step (has address); fall back to analyze API data
+    const propertyData = extractedPropertyData ?? insightsPropertyData
+    const parts = propertyData?.address?.split(',').map((s) => s.trim()).filter(Boolean) ?? []
+    const label = parts.length >= 2 ? `${parts[0]}, ${parts[1]}` : parts[0] ?? `Property ${saved.length + 1}`
+    addToComparison({ label, result, propertyData })
+    setCurrentResultSaved(true)
   }
 
   return (
@@ -116,8 +134,18 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-6 py-10">
-        {view === 'questionnaire' ? (
+      {/* Extra bottom padding when ComparisonBar is visible */}
+      <main className={`max-w-3xl mx-auto px-6 py-10 ${saved.length > 0 && view !== 'comparison' ? 'pb-24' : ''}`}>
+        {view === 'comparison' ? (
+          <ComparisonView
+            saved={saved}
+            onRemove={removeFromComparison}
+            onRename={renameInComparison}
+            onBack={() => { setView(result ? 'results' : 'questionnaire'); window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior }) }}
+            onClear={() => { clearComparison(); setView(result ? 'results' : 'questionnaire'); window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior }) }}
+            onAddAnother={() => { setView('questionnaire'); if (contextType !== 'property') handleContextChange('property'); window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior }) }}
+          />
+        ) : view === 'questionnaire' ? (
           <div className="space-y-6">
             {/* Hero */}
             <div className="mb-1 space-y-1.5 text-center">
@@ -188,71 +216,13 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Input section — method selector for property mode, conversation toggle for agent mode */}
+            {/* Input section */}
             <div>
               {contextType === 'property' ? (
-                // Property mode: show method selector, then chosen input
-                propertyInputMethod === null ? (
-                  <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
-                    <p className="text-sm font-semibold text-gray-800 mb-1">How would you like to start?</p>
-                    <p className="text-xs text-gray-400 mb-4">Choose an input method to pre-fill your analysis.</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      {/* Conversation / notes card */}
-                      <button
-                        onClick={() => setPropertyInputMethod('conversation')}
-                        className="flex flex-col items-start gap-2 rounded-xl border border-gray-200 bg-gray-50 hover:bg-blue-50 hover:border-blue-300 p-4 text-left transition-all duration-200 group"
-                      >
-                        <div className="w-8 h-8 rounded-lg bg-white border border-gray-200 group-hover:border-blue-200 flex items-center justify-center shadow-sm">
-                          <svg className="w-4 h-4 text-gray-500 group-hover:text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                          </svg>
-                        </div>
-                        <div>
-                          <p className="text-xs font-semibold text-gray-800 group-hover:text-blue-700">Paste conversation or notes</p>
-                          <p className="text-[11px] text-gray-400 leading-relaxed mt-0.5">Paste a description, agent notes, or listing text</p>
-                        </div>
-                      </button>
-
-                      {/* Link / address card */}
-                      <button
-                        onClick={() => setPropertyInputMethod('link')}
-                        className="flex flex-col items-start gap-2 rounded-xl border border-gray-200 bg-gray-50 hover:bg-blue-50 hover:border-blue-300 p-4 text-left transition-all duration-200 group"
-                      >
-                        <div className="w-8 h-8 rounded-lg bg-white border border-gray-200 group-hover:border-blue-200 flex items-center justify-center shadow-sm">
-                          <svg className="w-4 h-4 text-gray-500 group-hover:text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                          </svg>
-                        </div>
-                        <div>
-                          <p className="text-xs font-semibold text-gray-800 group-hover:text-blue-700">Enter property link or address</p>
-                          <p className="text-[11px] text-gray-400 leading-relaxed mt-0.5">Type an address or paste a listing URL</p>
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {!hasPrefilled && (
-                      <button
-                        onClick={() => setPropertyInputMethod(null)}
-                        className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors duration-150"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                        </svg>
-                        Change input method
-                      </button>
-                    )}
-                    {propertyInputMethod === 'conversation' ? (
-                      <ConversationAnalyzer onPrefill={handlePrefill} contextType={contextType} />
-                    ) : (
-                      <PropertyLinkInput onPrefill={handlePrefill} />
-                    )}
-                  </div>
-                )
+                !hasPrefilled ? (
+                  <PropertyLinkInput onPrefill={handlePrefill} />
+                ) : null
               ) : (
-                // Agent mode: unchanged toggle
                 !showAnalyzer ? (
                   <button
                     onClick={() => setShowAnalyzer(true)}
@@ -269,14 +239,14 @@ export default function Home() {
               )}
             </div>
 
-            {/* Questionnaire — review mode for property (only after prefill), full dropdowns for agent */}
+            {/* Questionnaire */}
             {contextType === 'property' ? (
               hasPrefilled && <PropertyReviewMode categories={activeCategories} answers={answers} onChange={handleChange} prefills={prefills} />
             ) : (
               <Questionnaire categories={activeCategories} answers={answers} onChange={handleChange} prefills={prefills} />
             )}
 
-            {/* Submit — only shown for property after prefill, always shown for agent */}
+            {/* Submit */}
             {(contextType !== 'property' || hasPrefilled) && (
               <div className="pt-2 pb-10">
                 {!allAnswered && canSubmit && (
@@ -290,12 +260,12 @@ export default function Home() {
                   className="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-30 disabled:cursor-not-allowed text-sm font-semibold text-white transition-all duration-200 shadow-md shadow-blue-600/25"
                 >
                   {canSubmit
-                    ? contextType === 'property' ? 'Analyse This Property' : 'Evaluate This Agent'
+                    ? contextType === 'property' ? 'Generate My Score' : 'Evaluate This Agent'
                     : `Answer ${Math.ceil(totalQuestions * 0.7) - answeredCount} more to continue`}
                 </button>
                 {canSubmit && (
                   <p className="text-center text-xs text-gray-400 mt-2.5">
-                    No signup required · Your data stays private
+                    No signup required · Your data stays private
                   </p>
                 )}
               </div>
@@ -314,17 +284,33 @@ export default function Home() {
                     : `Buyer agent evaluation — analysed across ${result.categoryScores.length} weighted categories.`}
                 </p>
               </div>
-              <Results result={result} conversationText={conversationText} onReset={handleReset} />
+              <Results
+                result={result}
+                conversationText={conversationText}
+                onReset={handleReset}
+                onSaveToCompare={result.contextType === 'property' ? handleSaveToCompare : undefined}
+                isSaved={currentResultSaved}
+                isFull={isFull}
+              />
             </div>
           )
         )}
       </main>
 
-      <footer className="max-w-3xl mx-auto px-6 py-6 flex items-center justify-center border-t border-gray-100 mt-4">
+      <footer className={`max-w-3xl mx-auto px-6 py-6 flex items-center justify-center border-t border-gray-100 mt-4 ${saved.length > 0 && view !== 'comparison' ? 'mb-16' : ''}`}>
         <a href="/privacy" className="text-xs text-gray-400 hover:text-gray-600 transition-colors duration-150 underline underline-offset-2">
           Privacy Policy
         </a>
       </footer>
+
+      {/* Comparison tray — shown on all views except comparison itself */}
+      {view !== 'comparison' && (
+        <ComparisonBar
+          saved={saved}
+          onRemove={removeFromComparison}
+          onCompare={() => setView('comparison')}
+        />
+      )}
     </div>
   )
 }

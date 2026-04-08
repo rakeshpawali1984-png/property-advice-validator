@@ -1,16 +1,19 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { ScorecardResult, AIInsights, CategoryScore } from '@/lib/types'
+import { ScorecardResult, AIInsights, CategoryScore, PropertyData } from '@/lib/types'
 import { VERDICT_CONFIG } from '@/lib/scoring'
 
 interface Props {
   result: ScorecardResult
   conversationText?: string
   onReset: () => void
+  onSaveToCompare?: (propertyData: PropertyData | null) => void
+  isSaved?: boolean
+  isFull?: boolean
 }
 
-export default function Results({ result, conversationText, onReset }: Props) {
+export default function Results({ result, conversationText, onReset, onSaveToCompare, isSaved, isFull }: Props) {
   const [insights, setInsights] = useState<AIInsights | null>(null)
   const [loadingInsights, setLoadingInsights] = useState(false)
   const [insightError, setInsightError] = useState('')
@@ -357,7 +360,29 @@ export default function Results({ result, conversationText, onReset }: Props) {
       )}
 
       {/* CTA */}
-      <div className="pt-2 pb-2">
+      <div className="pt-2 pb-2 space-y-2.5">
+        {/* Save to Compare — property mode only */}
+        {result.contextType === 'property' && onSaveToCompare && (
+          isSaved ? (
+            <div className="w-full py-3 rounded-xl bg-green-50 border border-green-200 text-sm font-semibold text-green-700 flex items-center justify-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              Saved to comparison tray
+            </div>
+          ) : (
+            <button
+              onClick={() => onSaveToCompare(insights?.propertyData ?? null)}
+              disabled={isFull}
+              className="w-full py-3 rounded-xl bg-white hover:bg-blue-50 active:bg-blue-100 border border-blue-200 hover:border-blue-400 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-semibold text-blue-700 transition-all duration-200 flex items-center justify-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              {isFull ? 'Comparison tray full (3/3)' : 'Save to Comparison Tray'}
+            </button>
+          )
+        )}
         <button
           onClick={onReset}
           className="w-full py-3.5 rounded-xl bg-gray-900 hover:bg-gray-800 active:bg-gray-950 text-sm font-semibold text-white transition-all duration-200 shadow-md flex items-center justify-center gap-2"

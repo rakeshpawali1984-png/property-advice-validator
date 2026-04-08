@@ -73,4 +73,13 @@ export interface ConversationSignals {
   prefills: { [questionId: string]: OptionScore }
   summary: string
   rawText?: string
+  propertyData?: PropertyData
+}
+
+export interface SavedProperty {
+  id: string
+  label: string
+  savedAt: number
+  result: ScorecardResult
+  propertyData: PropertyData | null
 }

@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Buyer Agent Scorecard',
-  description: 'Evaluate your buyer\'s agent with a structured, AI-powered scorecard.',
+  title: 'Property Advice Analysis',
+  description: 'Analyse any property with a structured, AI-powered advice framework.',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
