@@ -14,9 +14,10 @@ html, body {
   max-width: 100%;
 }
 
-/* Prevent iOS Safari auto-zoom on input focus (triggered when font-size < 16px) */
+/* Prevent iOS/Chrome auto-zoom on input focus (triggered when font-size < 16px).
+   !important needed to override Tailwind utility classes (text-sm etc.) */
 input, textarea, select {
-  font-size: 16px;
+  font-size: 16px !important;
 }
 
 html {
