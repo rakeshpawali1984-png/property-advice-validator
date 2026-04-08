@@ -305,11 +305,13 @@ export default function Home() {
           result && (
             <div className="space-y-6">
               <div className="mb-2">
-                <h2 className="text-2xl font-semibold text-gray-900 mb-1">Property Advice Assessment</h2>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-1">
+                  {result.contextType === 'property' ? 'Property Analysis' : 'Buyer Agent Assessment'}
+                </h2>
                 <p className="text-sm text-gray-500">
                   {result.contextType === 'property'
                     ? `Property recommendation — analysed across ${result.categoryScores.length} weighted categories.`
-                    : `Initial agent discussion — analysed across ${result.categoryScores.length} weighted categories.`}
+                    : `Buyer agent evaluation — analysed across ${result.categoryScores.length} weighted categories.`}
                 </p>
               </div>
               <Results result={result} conversationText={conversationText} onReset={handleReset} />
