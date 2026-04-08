@@ -212,6 +212,11 @@ export default function ConversationAnalyzer({ onPrefill, contextType }: Props) 
             rows={5}
             className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-150 hover:border-gray-300"
           />
+          {text.length > 0 && !hasText && (
+            <p className="text-xs text-gray-400 mt-1.5">
+              {20 - text.trim().length} more character{20 - text.trim().length !== 1 ? 's' : ''} needed to enable import
+            </p>
+          )}
         </div>
 
         {/* Risk checklist — property mode only */}
@@ -303,7 +308,7 @@ export default function ConversationAnalyzer({ onPrefill, contextType }: Props) 
               Extracting signals…
             </>
           ) : (
-            hasText ? 'Import & Pre-fill Answers' : 'Apply Risk Flags'
+            'Import & Pre-fill Answers'
           )}
         </button>
       </div>
