@@ -15,6 +15,17 @@ interface RiskItem {
   prefills: Record<string, OptionScore>
 }
 
+function isConfirmedRisk(text: string, pattern: RegExp): boolean {
+  const re = new RegExp(pattern.source, 'gi')
+  let m: RegExpExecArray | null
+  while ((m = re.exec(text)) !== null) {
+    const before = text.slice(Math.max(0, m.index - 60), m.index)
+    if (/\b(no|not|without|never|none|free\s+from)\b[^.!?\n]*$/i.test(before)) continue
+    return true
+  }
+  return false
+}
+
 const RISK_ITEMS: RiskItem[] = [
   {
     id: 'sloped',
@@ -31,13 +42,13 @@ const RISK_ITEMS: RiskItem[] = [
   {
     id: 'public_housing',
     label: 'Near public housing',
-    detect: (t) => /public\s*housing|housing\s*commission|commission\s*home|social\s*housing/i.test(t),
+    detect: (t) => isConfirmedRisk(t, /public\s*housing|housing\s*commission|commission\s*home|social\s*housing/i),
     prefills: { pr_2: 2 as OptionScore },
   },
   {
     id: 'main_road',
     label: 'Close to main road',
-    detect: (t) => /main\s*road|arterial(?:\s*road)?|busy\s*road|high[\s-]traffic/i.test(t),
+    detect: (t) => isConfirmedRisk(t, /main\s*road|arterial(?:\s*road)?|busy\s*road|high[\s-]traffic/i),
     prefills: { pr_2: 6 as OptionScore },
   },
   {
@@ -49,7 +60,7 @@ const RISK_ITEMS: RiskItem[] = [
   {
     id: 'power_lines',
     label: 'Near power lines',
-    detect: (t) => /transmission\s*line|power\s*lines?|high[- ]?voltage|pylon|electricity\s*tower/i.test(t),
+    detect: (t) => isConfirmedRisk(t, /transmission\s*line|power\s*lines?|high[- ]?voltage|pylon|electricity\s*tower/i),
     prefills: { pr_2: 2 as OptionScore },
   },
   {

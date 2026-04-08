@@ -20,6 +20,22 @@ interface RiskItem {
   prefills: Record<string, OptionScore>
 }
 
+// Returns true only if the pattern matches AND the match is NOT preceded by a
+// negation word (no, not, without, never, none) within the same clause.
+// Prevents false positives from phrases like "No public housing nearby" or
+// "Not near main road or railway".
+function isConfirmedRisk(text: string, pattern: RegExp): boolean {
+  const re = new RegExp(pattern.source, 'gi')
+  let m: RegExpExecArray | null
+  while ((m = re.exec(text)) !== null) {
+    const before = text.slice(Math.max(0, m.index - 60), m.index)
+    // Skip if a negation word appears before this match in the same clause
+    if (/\b(no|not|without|never|none|free\s+from)\b[^.!?\n]*$/i.test(before)) continue
+    return true
+  }
+  return false
+}
+
 const RISK_ITEMS: RiskItem[] = [
   // PHYSICAL
   {
@@ -70,7 +86,7 @@ const RISK_ITEMS: RiskItem[] = [
     label: 'Near public housing',
     group: 'location',
     tooltip: 'May affect tenant quality and buyer demand',
-    detect: (t) => /public\s*housing|housing\s*commission|commission\s*home|social\s*housing|near\s*public\s*housing\s*:\s*yes/i.test(t),
+    detect: (t) => isConfirmedRisk(t, /public\s*housing|housing\s*commission|commission\s*home|social\s*housing/i),
     prefills: { pr_2: 2 as OptionScore },
   },
   {
@@ -78,7 +94,7 @@ const RISK_ITEMS: RiskItem[] = [
     label: 'Close to main road / highway',
     group: 'location',
     tooltip: 'Traffic noise and safety concerns can reduce desirability',
-    detect: (t) => /main\s*road|arterial(?:\s*road)?|busy\s*road|high[\s-]traffic|along\s*highways?|busy\s*roads?\s*:\s*yes/i.test(t),
+    detect: (t) => isConfirmedRisk(t, /main\s*road|arterial(?:\s*road)?|busy\s*road|high[\s-]traffic|along\s*highways?/i),
     prefills: { pr_2: 6 as OptionScore },
   },
   {
@@ -86,7 +102,7 @@ const RISK_ITEMS: RiskItem[] = [
     label: 'Near railway tracks',
     group: 'location',
     tooltip: 'Noise and vibration may reduce tenant satisfaction',
-    detect: (t) => /railway|train\s*(?:line|track|station)|rail\s*(?:corridor|line|track)|railway\s*tracks?\s*:\s*yes/i.test(t),
+    detect: (t) => isConfirmedRisk(t, /railway|train\s*(?:line|track|station)|rail\s*(?:corridor|line|track)/i),
     prefills: { pr_2: 2 as OptionScore },
   },
   {
@@ -102,7 +118,7 @@ const RISK_ITEMS: RiskItem[] = [
     label: 'Near power lines / transmission',
     group: 'location',
     tooltip: 'Health perception and visual impact can reduce resale value',
-    detect: (t) => /transmission\s*line|power\s*lines?|high[- ]?voltage|pylon|electricity\s*tower/i.test(t),
+    detect: (t) => isConfirmedRisk(t, /transmission\s*line|power\s*lines?|high[- ]?voltage|pylon|electricity\s*tower/i),
     prefills: { pr_2: 2 as OptionScore },
   },
   // PLANNING & LEGAL
@@ -119,7 +135,7 @@ const RISK_ITEMS: RiskItem[] = [
     label: 'Heritage overlay',
     group: 'planning',
     tooltip: 'Restricts renovations and may increase compliance costs',
-    detect: (t) => /heritage\s*(?:overlay|listed|register|zone|property)|heritage\s*(?:overlay\s*)?:\s*yes/i.test(t),
+    detect: (t) => isConfirmedRisk(t, /heritage\s*(?:overlay|listed|register|zone|property)/i),
     prefills: { pa_2: 2 as OptionScore },
   },
   {
@@ -144,7 +160,7 @@ const RISK_ITEMS: RiskItem[] = [
     label: 'Flood zone',
     group: 'environmental',
     tooltip: 'May increase insurance costs and impact resale value',
-    detect: (t) => /flood\s*(?:zone|plain|risk|area|prone)|prone\s*to\s*flood|inundation|flood\s*(?:zone\s*)?:\s*yes/i.test(t),
+    detect: (t) => isConfirmedRisk(t, /flood\s*(?:zone|plain|risk|area|prone)|prone\s*to\s*flood|inundation/i),
     prefills: { pa_2: 2 as OptionScore },
   },
   {
@@ -152,7 +168,7 @@ const RISK_ITEMS: RiskItem[] = [
     label: 'Bushfire zone',
     group: 'environmental',
     tooltip: 'Higher insurance premiums and building restrictions apply',
-    detect: (t) => /bushfire\s*(?:zone|risk|area|:\s*yes)|BAL[-\s]\d|prone\s*to\s*(?:bush)?fire|bushfire\s*:\s*(?:yes|no)/i.test(t),
+    detect: (t) => isConfirmedRisk(t, /bushfire\s*(?:zone|risk|area)|BAL[-\s]\d|prone\s*to\s*(?:bush)?fire/i),
     prefills: { pa_2: 2 as OptionScore },
   },
   // MARKET

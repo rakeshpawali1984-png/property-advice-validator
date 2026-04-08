@@ -110,7 +110,17 @@ function extractPropertyIntel(text: string): RawPropertyIntel {
   ]
   const flags: string[] = []
   for (const { pattern, label } of flagDefs) {
-    if (pattern.test(text)) flags.push(label)
+    // Find all matches and check that none are preceded by a negation phrase
+    const re = new RegExp(pattern.source, 'gi')
+    let m: RegExpExecArray | null
+    let confirmed = false
+    while ((m = re.exec(text)) !== null) {
+      const before = text.slice(Math.max(0, m.index - 80), m.index)
+      if (/\b(no|not|without|never|none|free\s+from)\b[^.!?\n]*$/i.test(before)) continue
+      confirmed = true
+      break
+    }
+    if (confirmed) flags.push(label)
   }
   // Age-derived flags
   if (data.yearBuilt) {

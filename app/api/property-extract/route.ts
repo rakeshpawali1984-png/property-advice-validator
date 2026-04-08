@@ -59,6 +59,12 @@ export async function POST(req: NextRequest) {
 
     const combinedText = listingText.trim().slice(0, 5000)
 
+    // Extract lines where the user explicitly states something is NOT a risk
+    const clearedRisks = combinedText
+      .split(/[\n;]+/)
+      .map(l => l.trim())
+      .filter(l => l.length > 3 && l.length < 200 && /\b(no|not|without|never|none|free\s+from)\b/i.test(l))
+
     const questionList = PROPERTY_CATEGORIES.flatMap((cat) =>
       cat.questions.map((q) => ({
         id: q.id,
@@ -67,10 +73,14 @@ export async function POST(req: NextRequest) {
       }))
     )
 
+    const clearedSection = clearedRisks.length > 0
+      ? `\nEXPLICITLY CLEARED — the user confirmed these are NOT risks. You MUST NOT include them as flags under any circumstances:\n${clearedRisks.map(c => `  • "${c}"`).join('\n')}\n`
+      : ''
+
     const prompt = `You are analysing a property listing to assess deal quality for an Australian residential real estate buyer.
 
 ${combinedText}
-
+${clearedSection}
 TASK 1 — Extract the following property facts (omit any field for which no evidence exists):
 - address (full address if identifiable)
 - price (asking price, e.g. "$850,000")
@@ -81,9 +91,16 @@ TASK 1 — Extract the following property facts (omit any field for which no evi
 - parking (number as string, e.g. "1")
 - rentRange (weekly rent if available, e.g. "$450–$480/wk")
 - estimatedYield (gross yield if calculable, e.g. "3.2%")
-- flags (array of brief risk descriptors — only real risks, e.g. ["Flood overlay", "High-voltage powerline nearby"])
+- flags (array of brief risk descriptors — ONLY include a risk when the text CONFIRMS it as a fact. Any item listed in EXPLICITLY CLEARED above must never appear here. Absence of mention is not a flag. When in doubt, omit.)
 
-TASK 2 — Score each question below based ONLY on what is explicitly evident in the listing. If there is no evidence for a question, omit it.
+TASK 2 — Score each question below based ONLY on what is explicitly stated in the listing text.
+
+CRITICAL SCORING RULES — read carefully:
+- Score 10: The listing explicitly provides positive evidence (e.g. building inspection done, comparable sales cited, independent yield source named).
+- Score 6: The topic is mentioned in general or partial terms, OR the listing does not address it at all. A typical property listing will not contain independent research, inspections, or risk checks — that is NORMAL, not a failing. Missing = 6 (unknown/unverified, not bad).
+- Score 2: ONLY use this when the listing explicitly states a problem or confirms something negative (e.g. "sold as-is", "no building inspection", stated flood overlay, confirmed heritage restriction, strata with known issues).
+
+If you are not sure, omit the question entirely — do NOT guess or infer negatively. Omitting is better than a wrong score 2.
 
 Questions:
 ${questionList.map((q) => `- ID: ${q.id} | ${q.category}: ${q.question}`).join('\n')}
@@ -103,10 +120,10 @@ Respond ONLY with valid JSON in this exact format:
     "flags": ["..."]
   },
   "prefills": { "question_id": score_number },
-  "summary": "2-3 sentence analysis of this property's key attributes, investment appeal, and any notable risks."
+  "summary": "2-3 sentence analysis of this property's key attributes, investment appeal, and any explicitly stated risks or strengths."
 }
 
-Use scores 10, 6, or 2 only. If very little data is available, still return your best estimates from the address context.`
+Use scores 10, 6, or 2 only. Omit questions where the listing gives no clear signal either way.`
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -146,7 +163,24 @@ Use scores 10, 6, or 2 only. If very little data is available, still return your
       }
     }
     if (Array.isArray(rawPd.flags)) {
-      const cleanFlags = rawPd.flags.filter((f): f is string => typeof f === 'string' && f.trim().length > 0)
+      const cleanFlags = rawPd.flags.filter((f): f is string => {
+        if (typeof f !== 'string' || !f.trim()) return false
+        // Strip GPT-appended description (e.g. "— potential impact...")
+        const coreLabel = f.split(/\s*[—–\-]\s*/)[0].trim().toLowerCase()
+        const coreWords = coreLabel.replace(/[^a-z\s]/g, '').split(/\s+/).filter(w => w.length > 3)
+        // Check 1: does any cleared line from the input contain this flag's key words?
+        for (const cleared of clearedRisks) {
+          const cl = cleared.toLowerCase()
+          const matchCount = coreWords.filter(w => cl.includes(w)).length
+          if (matchCount >= Math.min(2, coreWords.length)) return false
+        }
+        // Check 2: regex negation fallback on full text
+        for (const word of coreWords) {
+          const negated = new RegExp(`\\b(no|not|without|never|none|free\\s+from)\\b[^.!?\\n]{0,80}${word}`, 'i')
+          if (negated.test(combinedText)) return false
+        }
+        return true
+      })
       if (cleanFlags.length > 0) propertyData.flags = cleanFlags
     }
 
