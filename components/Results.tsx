@@ -92,9 +92,9 @@ export default function Results({ result, conversationText, onReset, onResetToCo
     <div className="space-y-5">
 
       {/* Report Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-gray-200">
-        <span className="text-xs font-semibold uppercase tracking-widest text-gray-400">Advice Analysis Report</span>
-        <span className="text-xs text-gray-400">{reportTime}</span>
+      <div className="flex items-center justify-between pb-3 border-b border-gray-200 gap-3 min-w-0">
+        <span className="text-xs font-semibold uppercase tracking-wider text-gray-400 truncate">Advice Analysis Report</span>
+        <span className="text-xs text-gray-400 whitespace-nowrap shrink-0">{reportTime}</span>
       </div>
 
       {/* Score hero */}
