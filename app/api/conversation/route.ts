@@ -21,6 +21,7 @@ function computeDeterministicPropertyPrefills(text: string): Record<string, Opti
   if (/flood\s*(?:overlay|zone|plain|risk)|floodprone/i.test(text)) envDed += 2
   if (/bushfire|BAL[\s-]?rating|fire\s*(?:overlay|zone|risk)/i.test(text)) envDed += 2
   if (/(?:contaminated|contamination|remediation)\s*(?:land|soil|site)?/i.test(text)) envDed += 2
+  if (/asbestos/i.test(text)) envDed += 2
   if (/heritage\s*(?:overlay|listed?|register)/i.test(text)) envDed += 1
   if (/steep\s*slope|sloped?\s*(?:land|block)|sloping/i.test(text)) envDed += 1
   if (buildAge > 40) envDed += 1
@@ -111,9 +112,13 @@ Only include question IDs where the conversation provides clear evidence. Use sc
     // Validate prefills — only allow valid question IDs and valid scores
     const validScores: OptionScore[] = [10, 6, 2]
     const safePrefills: { [k: string]: OptionScore } = {}
+    let rejectedCount = 0
     for (const [id, score] of Object.entries(parsed.prefills ?? {})) {
       if (validIds.includes(id) && validScores.includes(score as OptionScore)) {
         safePrefills[id] = score as OptionScore
+      } else {
+        rejectedCount++
+        console.warn(`[conversation] Rejected prefill: ${id}=${score}`)
       }
     }
 
@@ -128,6 +133,7 @@ Only include question IDs where the conversation provides clear evidence. Use sc
     return NextResponse.json({
       prefills: safePrefills,
       summary: typeof parsed.summary === 'string' ? parsed.summary : '',
+      rejectedCount,
     })
   } catch (err) {
     console.error('Conversation analyze error:', err)

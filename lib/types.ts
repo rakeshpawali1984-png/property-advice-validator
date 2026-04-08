@@ -37,6 +37,8 @@ export interface ScorecardResult {
   weakAreas: string[]
   contextType: 'agent' | 'property'
   riskLevel: 'Low' | 'Moderate' | 'Elevated'
+  capTriggered?: boolean       // true when a critical category weakness capped the score down
+  answeredCoverage?: number    // 0–1: fraction of total weight that was answered
 }
 
 export interface PropertyData {
@@ -74,6 +76,7 @@ export interface ConversationSignals {
   summary: string
   rawText?: string
   propertyData?: PropertyData
+  rejectedCount?: number   // number of LLM prefills that failed validation (invalid ID or score)
 }
 
 export interface SavedProperty {

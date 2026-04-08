@@ -82,6 +82,7 @@ export default function ConversationAnalyzer({ onPrefill, contextType }: Props) 
   const [error, setError] = useState('')
   const [summary, setSummary] = useState('')
   const [prefillCount, setPrefillCount] = useState(0)
+  const [rejectedCount, setRejectedCount] = useState(0)
   const [analysed, setAnalysed] = useState(false)
   const [detectedRisks, setDetectedRisks] = useState<Set<string>>(new Set())
   const [checkedRisks, setCheckedRisks] = useState<Set<string>>(new Set())
@@ -119,7 +120,7 @@ export default function ConversationAnalyzer({ onPrefill, contextType }: Props) 
     setError('')
     setSummary('')
     setAnalysed(false)
-
+        setRejectedCount(0)
     const riskPrefills = buildRiskPrefills(checkedRisks)
     const checkedLabels = RISK_ITEMS.filter((r) => checkedRisks.has(r.id)).map((r) => r.label)
     const riskNote = checkedLabels.length > 0
@@ -144,6 +145,7 @@ export default function ConversationAnalyzer({ onPrefill, contextType }: Props) 
         }
 
         setPrefillCount(Object.keys(merged).length)
+        setRejectedCount(data.rejectedCount ?? 0)
         setSummary(data.summary)
         setAnalysed(true)
         onPrefill({ ...data, prefills: merged, rawText: text + riskNote })
@@ -267,6 +269,11 @@ export default function ConversationAnalyzer({ onPrefill, contextType }: Props) 
             <p className="text-xs font-semibold text-blue-700 mb-1">
               ✓ {prefillCount} answer{prefillCount !== 1 ? 's' : ''} pre-filled
             </p>
+            {rejectedCount > 0 && (
+              <p className="text-xs text-amber-700 mb-1">
+                {rejectedCount} response{rejectedCount !== 1 ? 's' : ''} from AI were unclear and ignored
+              </p>
+            )}
             {summary && <p className="text-sm text-gray-600 leading-relaxed">{summary}</p>}
           </div>
         )}

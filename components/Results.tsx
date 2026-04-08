@@ -123,6 +123,11 @@ export default function Results({ result, conversationText, onReset, onResetToCo
         <p className={`text-xs font-medium ${confidenceColor} mb-4`}>
           {confidence === 'High' ? 'High confidence' : confidence === 'Medium' ? 'Moderate confidence' : 'Limited data available'} &mdash; {buildConfidenceReason()}
         </p>
+        {result.capTriggered && (
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 mb-3 max-w-xs mx-auto">
+            Score reduced — a critical category scored below threshold
+          </p>
+        )}
         {insights?.summary ? (
           <div className="max-w-md mx-auto">
             <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Quick take</p>
@@ -422,7 +427,7 @@ function capitalise(s: string): string {
 
 function KeyMetricsCard({ data, whatWorks }: { data: NonNullable<AIInsights['propertyData']>; whatWorks?: string[] }) {
   const metrics: { label: string; value: string | undefined; highlight?: boolean }[] = [
-    { label: 'Rental yield', value: data.estimatedYield, highlight: true },
+    { label: 'Gross rental yield', value: data.estimatedYield, highlight: true },
     { label: 'Purchase price', value: data.price },
     { label: 'Rental estimate', value: data.rentRange },
     { label: 'Land size', value: data.landSize },

@@ -11,6 +11,11 @@ const PROMO_PHRASES: { pattern: RegExp; label: (m: string) => string }[] = [
   { pattern: /can'?t go wrong|no[- ]brainer|sure thing|always goes up/i, label: (m) => `"${m}" — absolute performance claim without qualifying data` },
   { pattern: /developer partner|working with the developer/i, label: (m) => `"${m}" — potential developer relationship; incentive structure unverified` },
   { pattern: /safe suburb|always in demand|strong growth area/i, label: (m) => `"${m}" — qualitative location claim without independent data` },
+  { pattern: /this is a steal|what a steal/i, label: (m) => `"${m}" — price value claim without independent appraisal or comparable evidence` },
+  { pattern: /you'?d be crazy (?:to miss|not to)|can'?t miss this/i, label: (m) => `"${m}" — urgency and fear-of-missing-out language without data` },
+  { pattern: /act (?:fast|now|quickly)|move (?:fast|quickly)|limited (?:stock|availability|time)/i, label: (m) => `"${m}" — artificial urgency pressure tactic` },
+  { pattern: /market (?:is )?running hot|market[\s-]is[\s-]hot|hot market/i, label: (m) => `"${m}" — generalised market heat claim without supporting data` },
+  { pattern: /you (?:can'?t|cannot) lose|guaranteed (?:return|growth|income)/i, label: (m) => `"${m}" — returns guarantee; no investment can guarantee outcomes` },
 ]
 
 function detectPromoSignals(text: string): string[] {
@@ -177,8 +182,8 @@ export async function POST(req: NextRequest) {
 
     const whatWorksRule = contextType === 'property'
       ? (finalScore < 60
-          ? 'whatWorks: maximum 2 items. Only include genuine, data-backed positives: computed yield ≥5%, land size above suburb median, absence of all risk overlays, or documented strong rental demand. If a positive has a trade-off, frame it — e.g. "Strong rental yield (~6.2%), though this may reflect underlying location risk". Do NOT include: "good property", "nice layout", "great opportunity", or any generic phrase. Do NOT mention agent credibility.'
-          : 'whatWorks: maximum 3 items. Include meaningful positives only — computed yield, land size, clean risk profile, or strong location evidence. Where applicable, pair with a trade-off caveat. No generic language. No agent-related content.')
+          ? 'whatWorks: maximum 2 items. Only include genuine, data-backed positives: computed yield ≥5%, documented large land size (400m²+ for houses), absence of all detected risk overlays, or documented strong rental demand. If a positive has a trade-off, frame it — e.g. "Strong rental yield (~6.2%), though this may reflect underlying location risk". Do NOT include: "good property", "nice layout", "great opportunity", or any generic phrase. Do NOT mention agent credibility. Do NOT reference suburb median comparisons — no suburb benchmark data is available.'
+          : 'whatWorks: maximum 3 items. Include meaningful positives only — computed yield, documented land size (state the figure), clean risk profile, or strong location evidence. Where applicable, pair with a trade-off caveat. No generic language. No agent-related content. Do NOT reference suburb median comparisons — no suburb benchmark data is available.')
       : (finalScore < 60
           ? 'whatWorks: maximum 2 items. Only what the agent explicitly demonstrated with evidence (e.g. clear strategy alignment, disclosed fee structure). Do NOT invent. No yield. No asset quality.'
           : 'whatWorks: maximum 3 items. Derive from categories above 7/10. Focus: strategy alignment, data quality, disclosure completeness. Where a strength has a caveat, include it. No property attributes.')

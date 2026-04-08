@@ -15,6 +15,7 @@ function computeDeterministicPropertyPrefills(text: string): Record<string, Opti
   if (/flood\s*(?:overlay|zone|plain|risk)|floodprone/i.test(text)) envDed += 2
   if (/bushfire|BAL[\s-]?rating|fire\s*(?:overlay|zone|risk)/i.test(text)) envDed += 2
   if (/(?:contaminated|contamination|remediation)\s*(?:land|soil|site)?/i.test(text)) envDed += 2
+  if (/asbestos/i.test(text)) envDed += 2
   if (/heritage\s*(?:overlay|listed?|register)/i.test(text)) envDed += 1
   if (/steep\s*slope|sloped?\s*(?:land|block)|sloping/i.test(text)) envDed += 1
   if (buildAge > 40) envDed += 1

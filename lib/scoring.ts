@@ -49,8 +49,15 @@ export function calculateScore(answers: Answers, contextType: 'agent' | 'propert
 
   const answeredWeightSum = categoryScores.reduce((total, cat) => total + (cat.answered ? cat.weight : 0), 0)
   const rawWeightedSum = categoryScores.reduce((total, cat) => total + (cat.answered ? cat.score * cat.weight : 0), 0)
-  // Renormalize against answered weights — max is always 100 regardless of which categories are skipped
-  const finalScore = answeredWeightSum > 0 ? (rawWeightedSum / answeredWeightSum) * 10 : 0
+  // Renormalize against answered weights so quality of available evidence matters.
+  // Apply a coverage penalty for agent mode when < 70% of question weight is answered —
+  // prevents gaming by answering only the strongest categories and skipping weak ones.
+  // Property mode always has 100% coverage (all questions default to 6) so penalty never fires.
+  const COVERAGE_THRESHOLD = 0.70
+  const coverageMultiplier = (!isProperty && answeredWeightSum < COVERAGE_THRESHOLD)
+    ? answeredWeightSum / COVERAGE_THRESHOLD
+    : 1.0
+  const finalScore = answeredWeightSum > 0 ? (rawWeightedSum / answeredWeightSum) * 10 * coverageMultiplier : 0
 
   const weakAreas = categoryScores
     .filter((c) => c.answered && c.score < 6)
@@ -96,7 +103,16 @@ export function calculateScore(answers: Answers, contextType: 'agent' | 'propert
     bothCritical ? 'Elevated' :
     (weakAreas.length >= 2 || capTriggered) ? 'Moderate' : 'Low'
 
-  return { finalScore: Math.round(cappedScore), verdict, categoryScores, weakAreas, contextType, riskLevel }
+  return {
+    finalScore: Math.round(cappedScore),
+    verdict,
+    categoryScores,
+    weakAreas,
+    contextType,
+    riskLevel,
+    capTriggered,
+    answeredCoverage: Math.round(answeredWeightSum * 100) / 100,
+  }
 }
 
 export const VERDICT_CONFIG = {
