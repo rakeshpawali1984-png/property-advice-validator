@@ -126,7 +126,7 @@ export default function Home() {
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
           <button
             onClick={handleReset}
-            className="flex items-center gap-2.5 min-w-0 group"
+            className="flex items-center gap-2.5 min-w-0 group text-left p-0 bg-transparent border-0 cursor-pointer"
             aria-label="Go to home"
           >
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-600 flex items-center justify-center shadow-sm shrink-0 group-hover:bg-blue-700 transition-colors">
