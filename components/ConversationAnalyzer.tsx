@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ConversationSignals, OptionScore } from '@/lib/types'
 
 interface Props {
@@ -112,6 +112,7 @@ export default function ConversationAnalyzer({ onPrefill, contextType }: Props) 
   const [analysed, setAnalysed] = useState(false)
   const [detectedRisks, setDetectedRisks] = useState<Set<string>>(new Set())
   const [checkedRisks, setCheckedRisks] = useState<Set<string>>(new Set())
+  const autoRunRef = useRef(false)
 
   // Auto-detect risks from text (property mode only)
   useEffect(() => {
@@ -194,6 +195,15 @@ export default function ConversationAnalyzer({ onPrefill, contextType }: Props) 
     }
   }
 
+  // Auto-trigger analysis after sample text is loaded
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (autoRunRef.current && text.trim().length >= 20) {
+      autoRunRef.current = false
+      handleAnalyze()
+    }
+  }, [text])
+
   const isProperty = contextType === 'property'
 
   return (
@@ -218,6 +228,17 @@ export default function ConversationAnalyzer({ onPrefill, contextType }: Props) 
             {isProperty
               ? 'Paste a property listing, agent notes, or description. Risks will be auto-detected below.'
               : 'Paste a transcript, chat, or email exchange with your agent. Answers will be pre-filled automatically.'}
+            {' '}
+            {text.trim().length === 0 && !isProperty && (
+              <button
+                type="button"
+                onClick={() => { autoRunRef.current = true; setText(`Me: Hi James, thanks for jumping on a call. We're first-home buyers looking in the $900K–$1.1M range in Melbourne's inner north. Can you walk me through how you work?\n\nJames (Buyer's Agent): Sure! I charge a flat fee of $12,000 or 1.5% of the purchase price — whichever is higher. I cover the whole process from search to settlement.\n\nMe: How many buyers are you working with at the moment?\n\nJames: I've got about 15 active clients right now.\n\nMe: Do you ever take referral fees from vendors or selling agents?\n\nJames: Occasionally I do receive referral fees from some developers, but it doesn't impact my advice to you.\n\nMe: How do you find properties? Do you have access to off-market listings?\n\nJames: I have some relationships with selling agents, but most of what I find is from the same portals you'd use — Domain and realestate.com.au.\n\nMe: Can you share some past results — like properties you've bought and what they went for vs. the asking price?\n\nJames: I don't have that data handy but I can share some client testimonials.\n\nMe: What areas do you specialise in? Do you know the inner north well?\n\nJames: I work across all of Melbourne, so I'm pretty flexible.`) }}
+
+                className="underline text-blue-500 hover:text-blue-700 font-medium"
+              >
+                Try with sample →
+              </button>
+            )}
           </p>
           <textarea
             value={text}

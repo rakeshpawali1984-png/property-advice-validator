@@ -438,6 +438,16 @@ export default function PropertyLinkInput({ onPrefill }: Props) {
           </p>
           <p className="text-xs text-blue-500 mb-2 leading-relaxed">
             Tip: open the listing in your browser, select all text (Cmd+A), copy and paste here.
+            {' '}
+            {listingText.trim().length === 0 && (
+              <button
+                type="button"
+                onClick={() => setListingText(`3-bedroom terrace house in Surry Hills NSW 2010. Asking price $1,650,000. Last sold in 2017 for $1,100,000. 142sqm internal, 180sqm total lot. Strata: no strata (freehold). Building inspection not yet done. Agent mentioned "minor cosmetic work needed" but could not confirm if any unpermitted renovations. Vendor wants a quick settlement (21 days). Flood zone: low risk. Heritage overlay: yes. Agent is representing both buyer and vendor (dual agency). Open for inspection had 30+ groups through.`)}
+                className="underline text-blue-600 hover:text-blue-800 font-medium"
+              >
+                Try with sample →
+              </button>
+            )}
           </p>
           <textarea
             value={listingText}
