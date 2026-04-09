@@ -28,12 +28,32 @@ function isConfirmedRisk(text: string, pattern: RegExp): boolean {
   const re = new RegExp(pattern.source, 'gi')
   let m: RegExpExecArray | null
   while ((m = re.exec(text)) !== null) {
-    const before = text.slice(Math.max(0, m.index - 60), m.index)
+    // Get the full line containing this match
+    const lineStart = text.lastIndexOf('\n', m.index) + 1
+    const lineEnd = text.indexOf('\n', m.index + m[0].length)
+    const line = text.slice(lineStart, lineEnd === -1 ? undefined : lineEnd).trim()
+    // Skip if line ends with a negation value (e.g. "Near railway tracks: No")
+    if (/[:\-]\s*(no|none|n\/a|false|not\s+applicable)\s*$/i.test(line)) continue
     // Skip if a negation word appears before this match in the same clause
+    const before = text.slice(Math.max(0, m.index - 60), m.index)
     if (/\b(no|not|without|never|none|free\s+from)\b[^.!?\n]*$/i.test(before)) continue
     return true
   }
   return false
+}
+
+/**
+ * Normalise structured checklist lines so negation-aware detection works uniformly.
+ * "Near railway tracks: No"  → "Not near railway tracks"
+ * "Flood Zone: N/A"          → "Not Flood Zone"
+ * "Has land Slopes: Yes"     → unchanged (positive assertion)
+ */
+function normalizeNegatedLines(text: string): string {
+  return text.split('\n').map(line => {
+    const m = line.match(/^(.+?)\s*[:\-]\s*(no|none|n\/a|false|nope|not\s+applicable|not\s+present|nil)\s*$/i)
+    if (m) return `Not ${m[1].trim()}`
+    return line
+  }).join('\n')
 }
 
 const RISK_ITEMS: RiskItem[] = [
@@ -43,7 +63,7 @@ const RISK_ITEMS: RiskItem[] = [
     label: 'Sloped land',
     group: 'physical',
     tooltip: 'May limit development potential and resale appeal',
-    detect: (t) => /steep\s*slope|sloped?\s*(?:land|block)|sloping|hillside|land\s*slope[s]?\s*:\s*yes/i.test(t),
+    detect: (t) => isConfirmedRisk(t, /steep\s*slope|sloped?\s*(?:land|block)|sloping|hillside|land\s*slopes?\s*:\s*yes/i),
     prefills: { pa_2: 2 as OptionScore },
   },
   {
@@ -51,7 +71,7 @@ const RISK_ITEMS: RiskItem[] = [
     label: 'Irregular land shape',
     group: 'physical',
     tooltip: 'Can reduce usable area and limit build options',
-    detect: (t) => /irregular\s*(?:block|shape|land)|battle[\s-]?axe|flag\s*lot|land\s*shape\s*:\s*irregular/i.test(t),
+    detect: (t) => isConfirmedRisk(t, /irregular\s*(?:block|shape|land)|battle[\s-]?axe|flag\s*lot|land\s*shape\s*:\s*irregular/i),
     prefills: { pa_2: 2 as OptionScore },
   },
   {
@@ -177,7 +197,7 @@ const RISK_ITEMS: RiskItem[] = [
     label: 'High land supply area',
     group: 'market',
     tooltip: 'May limit capital growth due to excess inventory',
-    detect: (t) => /high\s*(?:supply|land\s*supply)|oversupply|large\s*land\s*release|high\s*supply\s*ratio\s*:\s*yes/i.test(t),
+    detect: (t) => isConfirmedRisk(t, /high\s*(?:supply|land\s*supply)|oversupply|large\s*land\s*release|high\s*(?:land\s*)?supply\s*ratio/i),
     prefills: { pr_1: 6 as OptionScore },
   },
   {
@@ -327,7 +347,8 @@ export default function PropertyLinkInput({ onPrefill }: Props) {
 
   // Auto-detect risks from text in real-time
   useEffect(() => {
-    const detected = new Set(RISK_ITEMS.filter((r) => r.detect(listingText)).map((r) => r.id))
+    const normalised = normalizeNegatedLines(listingText)
+    const detected = new Set(RISK_ITEMS.filter((r) => r.detect(normalised)).map((r) => r.id))
     setDetectedRisks(detected)
     if (detected.size > 0) {
       setCheckedRisks((prev) => {

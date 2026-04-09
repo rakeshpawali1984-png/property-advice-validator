@@ -115,6 +115,12 @@ function extractPropertyIntel(text: string): RawPropertyIntel {
     let m: RegExpExecArray | null
     let confirmed = false
     while ((m = re.exec(text)) !== null) {
+      // Get the full line containing this match
+      const lineStart = text.lastIndexOf('\n', m.index) + 1
+      const lineEnd = text.indexOf('\n', m.index + m[0].length)
+      const line = text.slice(lineStart, lineEnd === -1 ? undefined : lineEnd).trim()
+      // Skip if line ends with a negation value (e.g. "Flood Zone: No")
+      if (/[:\-]\s*(no|none|n\/a|false|not\s+applicable)\s*$/i.test(line)) continue
       const before = text.slice(Math.max(0, m.index - 80), m.index)
       if (/\b(no|not|without|never|none|free\s+from)\b[^.!?\n]*$/i.test(before)) continue
       confirmed = true
